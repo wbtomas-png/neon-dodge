@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <title>NEON DODGE V2</title>
+  <meta name="theme-color" content="#0a1022" />
+  <style>
+    :root{
+      --bg1:#070b16;
+      --bg2:#0d1733;
+      --panel:rgba(10,18,35,.72);
+      --panelBorder:rgba(255,255,255,.08);
+      --text:#edf4ff;
+      --muted:#9db1d3;
+      --cyan:#57e4ff;
+      --pink:#ff4fd8;
+      --gold:#ffd54f;
+      --green:#73ffb9;
+      --red:#ff6d7e;
+      --violet:#b88cff;
+    }
+
+    *{
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,var(--bg2),var(--bg1));
+      color:var(--text);
+    }
+
+    #app{
+      position:fixed;
+      inset:0;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 20% 18%, rgba(87,228,255,.08), transparent 28%),
+        radial-gradient(circle at 80% 26%, rgba(255,79,216,.09), transparent 26%),
+        linear-gradient(180deg,var(--bg2),var(--bg1));
+    }
+
+    canvas{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    .hud{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      padding:max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
+    }
+
+    .topbar{
+      position:absolute;
+      top:max(8px, env(safe-area-inset-top));
+      left:10px;
+      right:10px;
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+
+    .leftPills{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      max-width:72%;
+    }
+
+    .pill,.scoreBox,.panel,.banner,.toast,.modalCard,.miniBtn{
+      background:var(--panel);
+      border:1px solid var(--panelBorder);
+      backdrop-filter:blur(10px);
+      box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+
+    .pill{
+      border-radius:15px;
+      padding:9px 11px;
+      min-width:74px;
+    }
+
+    .pillLabel{
+      font-size:10px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      margin-bottom:4px;
+      line-height:1;
+    }
+
+    .pillValue{
+      font-size:18px;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .scoreBox{
+      border-radius:18px;
+      padding:10px 14px;
+      text-align:right;
+      min-width:120px;
+    }
+
+    .scoreTitle{
+      font-size:10px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      margin-bottom:5px;
+    }
+
+    .scoreValue{
+      font-size:28px;
+      font-weight:1000;
+      line-height:1;
+    }
+
+    .centerTop{
+      position:absolute;
+      top:14%;
+      left:50%;
+      transform:translateX(-50%);
+      width:min(88vw,420px);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
+    }
+
+    .banner{
+      border-radius:18px;
+      padding:12px 16px;
+      text-align:center;
+      opacity:0;
+      transform:translateY(-10px);
+      transition:opacity .18s ease, transform .18s ease;
+    }
+
+    .banner.show{
+      opacity:1;
+      transform:translateY(0);
+    }
+
+    .bannerMain{
+      font-size:24px;
+      font-weight:1000;
+      letter-spacing:.05em;
+    }
+
+    .bannerSub{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .challengeBar{
+      width:100%;
+      border-radius:18px;
+      padding:10px 12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      opacity:.95;
+    }
+
+    .challengeLeft{
+      min-width:0;
+    }
+
+    .challengeTitle{
+      font-size:10px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      margin-bottom:4px;
+    }
+
+    .challengeText{
+      font-size:13px;
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .challengeProgress{
+      font-size:13px;
+      font-weight:900;
+      color:var(--gold);
+      flex:0 0 auto;
+    }
+
+    .bottomBar{
+      position:absolute;
+      left:10px;
+      right:10px;
+      bottom:max(8px, env(safe-area-inset-bottom));
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+    }
+
+    .chargeWrap{
+      flex:1;
+      max-width:380px;
+    }
+
+    .barTitle{
+      font-size:10px;
+      color:var(--muted);
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:6px;
+    }
+
+    .bar{
+      height:16px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      overflow:hidden;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,.35);
+    }
+
+    .barFill{
+      height:100%;
+      width:0%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,var(--cyan),var(--pink));
+      box-shadow:0 0 18px rgba(87,228,255,.4);
+      transition:width .08s linear;
+    }
+
+    .hint{
+      border-radius:18px;
+      padding:10px 12px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+      text-align:right;
+      max-width:50vw;
+    }
+
+    .toast{
+      position:absolute;
+      left:50%;
+      bottom:calc(max(84px, env(safe-area-inset-bottom) + 74px));
+      transform:translateX(-50%);
+      border-radius:15px;
+      padding:10px 14px;
+      font-size:13px;
+      font-weight:700;
+      opacity:0;
+      transition:opacity .18s ease, transform .18s ease;
+      white-space:nowrap;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(-4px);
+    }
+
+    .overlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background:radial-gradient(circle at center, rgba(18,28,56,.3), rgba(5,8,16,.86));
+      pointer-events:auto;
+    }
+
+    .hidden{
+      display:none !important;
+    }
+
+    .modalCard{
+      width:min(94vw,500px);
+      border-radius:26px;
+      padding:20px 18px 18px;
+      pointer-events:auto;
+    }
+
+    .logo{
+      text-align:center;
+      font-size:clamp(34px,8vw,54px);
+      font-weight:1000;
+      line-height:.94;
+      letter-spacing:.06em;
+      text-shadow:0 0 24px rgba(87,228,255,.14), 0 0 32px rgba(255,79,216,.12);
+    }
+
+    .logo span:first-child{ color:var(--cyan); }
+    .logo span:last-child{ color:var(--pink); }
+
+    .subtitle{
+      text-align:center;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+      margin-top:10px;
+    }
+
+    .grid{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+    }
+
+    .stat{
+      border-radius:15px;
+      padding:10px 11px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+    }
+
+    .statK{
+      font-size:10px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      margin-bottom:4px;
+    }
+
+    .statV{
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .btnRow{
+      display:flex;
+      gap:10px;
+      margin-top:16px;
+    }
+
+    button{
+      appearance:none;
+      border:0;
+      border-radius:18px;
+      padding:15px 14px;
+      font-size:16px;
+      font-weight:1000;
+      cursor:pointer;
+      flex:1;
+      color:#08101f;
+      background:linear-gradient(180deg,#80ebff,#4ddcff);
+      box-shadow:0 10px 24px rgba(87,228,255,.28), inset 0 -2px 0 rgba(0,0,0,.18);
+    }
+
+    button.secondary{
+      color:var(--text);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:none;
+    }
+
+    .sectionTitle{
+      margin-top:16px;
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .skinRow,.achList,.boardList{
+      margin-top:8px;
+      display:flex;
+      gap:8px;
+      overflow:auto;
+      padding-bottom:2px;
+    }
+
+    .skinCard,.achCard,.boardCard{
+      flex:0 0 auto;
+      min-width:116px;
+      border-radius:15px;
+      padding:10px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+    }
+
+    .skinDot{
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      margin-bottom:8px;
+      box-shadow:0 0 16px currentColor;
+    }
+
+    .skinName,.achName{
+      font-weight:900;
+      font-size:13px;
+      margin-bottom:3px;
+    }
+
+    .skinMeta,.achMeta,.boardMeta{
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .miniTopRight{
+      position:absolute;
+      top:max(8px, env(safe-area-inset-top));
+      right:10px;
+      display:flex;
+      gap:8px;
+      pointer-events:auto;
+    }
+
+    .miniBtn{
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:12px;
+      font-weight:900;
+      color:var(--text);
+      cursor:pointer;
+      border:none;
+      background:rgba(10,18,35,.7);
+    }
+
+    .muteOff{
+      opacity:.55;
+    }
+
+    .small{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+      text-align:center;
+    }
+
+    .pillGlowCyan{ color:var(--cyan); }
+    .pillGlowGold{ color:var(--gold); }
+    .pillGlowPink{ color:var(--pink); }
+
+    @media (max-width:420px){
+      .grid{ grid-template-columns:repeat(2,1fr); }
+      .scoreValue{ font-size:24px; }
+      .pillValue{ font-size:16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div class="hud">
+    <div class="miniTopRight">
+      <button class="miniBtn" id="muteBtn" type="button">Lyd: På</button>
+      <button class="miniBtn" id="pauseBtn" type="button">Pause</button>
+    </div>
+
+    <div class="topbar">
+      <div class="leftPills">
+        <div class="pill">
+          <div class="pillLabel">Combo</div>
+          <div class="pillValue" id="comboText">x1</div>
+        </div>
+        <div class="pill">
+          <div class="pillLabel">Coins</div>
+          <div class="pillValue pillGlowGold" id="coinsText">0</div>
+        </div>
+        <div class="pill">
+          <div class="pillLabel">Boss</div>
+          <div class="pillValue pillGlowPink" id="bossText">-</div>
+        </div>
+        <div class="pill">
+          <div class="pillLabel">Best</div>
+          <div class="pillValue pillGlowCyan" id="bestText">0</div>
+        </div>
+      </div>
+
+      <div class="scoreBox">
+        <div class="scoreTitle">Score</div>
+        <div class="scoreValue" id="scoreText">0</div>
+      </div>
+    </div>
+
+    <div class="centerTop">
+      <div class="banner" id="banner">
+        <div class="bannerMain" id="bannerMain"></div>
+        <div class="bannerSub" id="bannerSub"></div>
+      </div>
+
+      <div class="challengeBar panel">
+        <div class="challengeLeft">
+          <div class="challengeTitle">Daily Challenge</div>
+          <div class="challengeText" id="challengeText">...</div>
+        </div>
+        <div class="challengeProgress" id="challengeProgress">0/0</div>
+      </div>
+    </div>
+
+    <div class="bottomBar">
+      <div class="chargeWrap">
+        <div class="barTitle">Charge</div>
+        <div class="bar">
+          <div class="barFill" id="chargeFill"></div>
+        </div>
+      </div>
+      <div class="hint panel">
+        Dra/mus for å styre • Dobbeltklikk/dobbelttrykk = dash<br />
+        P = pause • M = lyd
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="overlay" id="menu">
+    <div class="modalCard">
+      <div class="logo"><span>NEON</span> <span>DODGE V2</span></div>
+      <div class="subtitle">
+        Telefonvennlig arcade-kaos med lyd, boss waves, unlocks og daily challenge.
+      </div>
+
+      <div class="grid">
+        <div class="stat">
+          <div class="statK">Beste score</div>
+          <div class="statV" id="menuBest">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Beste combo</div>
+          <div class="statV" id="menuBestCombo">x1</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Runder</div>
+          <div class="statV" id="menuRuns">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Coins totalt</div>
+          <div class="statV" id="menuCoinsTotal">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Boss slått</div>
+          <div class="statV" id="menuBosses">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Valgt skin</div>
+          <div class="statV" id="menuSkin">Core</div>
+        </div>
+      </div>
+
+      <div class="btnRow">
+        <button id="playBtn" type="button">Spill</button>
+        <button class="secondary" id="boardBtn" type="button">Wall of Fame</button>
+      </div>
+
+      <div class="sectionTitle">Skins</div>
+      <div class="skinRow" id="skinRow"></div>
+
+      <div class="sectionTitle">Achievements</div>
+      <div class="achList" id="achList"></div>
+
+      <div class="small">
+        Lyd starter etter første trykk. Det er nettleserne som er sære.
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="gameOver">
+    <div class="modalCard">
+      <div class="logo" style="font-size:40px;"><span>RUN</span> <span>OVER</span></div>
+      <div class="subtitle" id="finalMessage">Universet vant denne runden.</div>
+
+      <div class="grid">
+        <div class="stat">
+          <div class="statK">Score</div>
+          <div class="statV" id="finalScore">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Coins</div>
+          <div class="statV" id="finalCoins">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Combo</div>
+          <div class="statV" id="finalCombo">x1</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Bosses</div>
+          <div class="statV" id="finalBosses">0</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Daily</div>
+          <div class="statV" id="finalDaily">Nei</div>
+        </div>
+        <div class="stat">
+          <div class="statK">Best</div>
+          <div class="statV" id="finalBest">0</div>
+        </div>
+      </div>
+
+      <div class="btnRow">
+        <button id="retryBtn" type="button">Spill igjen</button>
+        <button class="secondary" id="menuBtn" type="button">Meny</button>
+      </div>
+
+      <div class="small">
+        God spillfølelse er magi. Råtten kode er bare smådjevelsk.
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="boardModal">
+    <div class="modalCard">
+      <div class="logo" style="font-size:34px;"><span>WALL</span> <span>OF FAME</span></div>
+      <div class="subtitle">
+        Lokal enhetsliste. Ekte global leaderboard krever backend.
+      </div>
+
+      <div class="boardList" id="boardList" style="display:block; overflow:auto; max-height:48vh;"></div>
+
+      <div class="btnRow">
+        <button class="secondary" id="boardCloseBtn" type="button">Lukk</button>
+        <button id="boardClearBtn" type="button">Nullstill liste</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const ui = {
+    scoreText: document.getElementById("scoreText"),
+    comboText: document.getElementById("comboText"),
+    coinsText: document.getElementById("coinsText"),
+    bestText: document.getElementById("bestText"),
+    bossText: document.getElementById("bossText"),
+    chargeFill: document.getElementById("chargeFill"),
+    challengeText: document.getElementById("challengeText"),
+    challengeProgress: document.getElementById("challengeProgress"),
+    banner: document.getElementById("banner"),
+    bannerMain: document.getElementById("bannerMain"),
+    bannerSub: document.getElementById("bannerSub"),
+    toast: document.getElementById("toast"),
+    menu: document.getElementById("menu"),
+    gameOver: document.getElementById("gameOver"),
+    boardModal: document.getElementById("boardModal"),
+    playBtn: document.getElementById("playBtn"),
+    retryBtn: document.getElementById("retryBtn"),
+    menuBtn: document.getElementById("menuBtn"),
+    boardBtn: document.getElementById("boardBtn"),
+    boardCloseBtn: document.getElementById("boardCloseBtn"),
+    boardClearBtn: document.getElementById("boardClearBtn"),
+    muteBtn: document.getElementById("muteBtn"),
+    pauseBtn: document.getElementById("pauseBtn"),
+    menuBest: document.getElementById("menuBest"),
+    menuBestCombo: document.getElementById("menuBestCombo"),
+    menuRuns: document.getElementById("menuRuns"),
+    menuCoinsTotal: document.getElementById("menuCoinsTotal"),
+    menuBosses: document.getElementById("menuBosses"),
+    menuSkin: document.getElementById("menuSkin"),
+    skinRow: document.getElementById("skinRow"),
+    achList: document.getElementById("achList"),
+    boardList: document.getElementById("boardList"),
+    finalScore: document.getElementById("finalScore"),
+    finalCoins: document.getElementById("finalCoins"),
+    finalCombo: document.getElementById("finalCombo"),
+    finalBosses: document.getElementById("finalBosses"),
+    finalDaily: document.getElementById("finalDaily"),
+    finalBest: document.getElementById("finalBest"),
+    finalMessage: document.getElementById("finalMessage")
+  };
+
+  const DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  let W = 0;
+  let H = 0;
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function rand(a, b) { return Math.random() * (b - a) + a; }
+  function randi(a, b) { return Math.floor(rand(a, b + 1)); }
+  function chance(p) { return Math.random() < p; }
+  function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function seededRand(seed) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  }
+
+  const STORAGE_KEY = "neon_dodge_v2_save";
+  const defaultSave = {
+    bestScore: 0,
+    bestCombo: 1,
+    runs: 0,
+    totalCoins: 0,
+    totalBossesDefeated: 0,
+    muted: false,
+    selectedSkin: "core",
+    skinsUnlocked: { core: true },
+    achievements: {},
+    localBoard: [],
+    dailyCompletions: {}
+  };
+
+  const save = Object.assign({}, defaultSave, JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"));
+  if (!save.skinsUnlocked) save.skinsUnlocked = { core: true };
+  if (!save.achievements) save.achievements = {};
+  if (!save.localBoard) save.localBoard = [];
+  if (!save.dailyCompletions) save.dailyCompletions = {};
+
+  function persist() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+  }
+
+  const skins = {
+    core: { name: "Core", color: "#57e4ff", unlock: "Standard", trail: "#57e4ff" },
+    gold: { name: "Gold", color: "#ffd54f", unlock: "Få 300 coins totalt", trail: "#ffd54f" },
+    nova: { name: "Nova", color: "#ff4fd8", unlock: "Nå combo x20", trail: "#ff4fd8" },
+    mint: { name: "Mint", color: "#73ffb9", unlock: "Slå 3 bosser", trail: "#73ffb9" },
+    void: { name: "Void", color: "#b88cff", unlock: "Score 5000", trail: "#b88cff" }
+  };
+
+  const achievements = [
+    { id: "first_run", name: "Første smell", desc: "Spill 1 runde." },
+    { id: "combo10", name: "Flow", desc: "Nå combo x10." },
+    { id: "combo20", name: "Maskin", desc: "Nå combo x20." },
+    { id: "score2000", name: "Shiny numbers", desc: "Oppnå 2000 score." },
+    { id: "score5000", name: "Absurd fart", desc: "Oppnå 5000 score." },
+    { id: "coins300", name: "Myntgoblin", desc: "Samle 300 coins totalt." },
+    { id: "boss1", name: "Boss? Hvilken boss?", desc: "Slå 1 boss." },
+    { id: "boss3", name: "Boss-sjefen", desc: "Slå 3 bosser totalt." },
+    { id: "daily1", name: "Dagens slit", desc: "Fullfør daily challenge." }
+  ];
+
+  function getDailyChallenge() {
+    const key = todayKey();
+    let seed = 0;
+    for (let i = 0; i < key.length; i++) seed += key.charCodeAt(i) * (i + 1);
+
+    const defs = [
+      { type: "coins", target: 25 + Math.floor(seededRand(seed + 1) * 20), label: "Samle coins" },
+      { type: "score", target: 1800 + Math.floor(seededRand(seed + 2) * 2200), label: "Oppnå score" },
+      { type: "combo", target: 12 + Math.floor(seededRand(seed + 3) * 10), label: "Nå combo" },
+      { type: "boss", target: 1, label: "Slå boss" }
+    ];
+
+    const chosen = defs[Math.floor(seededRand(seed + 7) * defs.length)];
+    return { key, ...chosen };
+  }
+
+  let daily = getDailyChallenge();
+
+  const game = {
+    running: false,
+    paused: false,
+    over: false,
+    t: 0,
+    score: 0,
+    coins: 0,
+    charge: 0,
+    combo: 1,
+    maxComboRun: 1,
+    comboTimer: 0,
+    difficulty: 1,
+    spawnTimer: 0,
+    coinTimer: 0,
+    powerTimer: 0,
+    wave: 1,
+    waveTimer: 0,
+    bossTimer: 14,
+    bossActive: false,
+    bossesDefeatedRun: 0,
+    screenShake: 0,
+    flash: 0,
+    dailyCoins: 0
+  };
+
+  const player = {
+    x: 0,
+    y: 0,
+    targetX: 0,
+    r: 16,
+    invuln: 0,
+    dash: 0,
+    shield: 0,
+    magnet: 0,
+    slow: 0,
+    trail: [],
+    alive: true
+  };
+
+  let boss = null;
+  const obstacles = [];
+  const coinItems = [];
+  const powerups = [];
+  const particles = [];
+  const rings = [];
+  const stars = [];
+  const bullets = [];
+
+  function hexToRgba(hex, a) {
+    const h = hex.replace("#", "");
+    const num = parseInt(h, 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function show(el) { el.classList.remove("hidden"); }
+  function hide(el) { el.classList.add("hidden"); }
+
+  let toastTimer = 0;
+  function toast(msg, time = 1.1) {
+    ui.toast.textContent = msg;
+    ui.toast.classList.add("show");
+    toastTimer = time;
+  }
+
+  let bannerTimer = 0;
+  function showBanner(main, sub = "", time = 1.0) {
+    ui.bannerMain.textContent = main;
+    ui.bannerSub.textContent = sub;
+    ui.banner.classList.add("show");
+    bannerTimer = time;
+  }
+
+  function hideBanner() {
+    ui.banner.classList.remove("show");
+  }
+
+  function initStars() {
+    stars.length = 0;
+    for (let i = 0; i < 90; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        s: rand(0.6, 2.4),
+        z: rand(0.4, 1.3)
+      });
+    }
+  }
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    player.y = H * 0.78;
+    if (!game.running) {
+      player.x = W * 0.5;
+      player.targetX = player.x;
+    }
+
+    initStars();
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+
+  const AudioFx = {
+    ctx: null,
+    master: null,
+    musicGain: null,
+    sfxGain: null,
+    unlocked: false,
+    musicStarted: false,
+    muted: !!save.muted,
+    musicNext: 0,
+    bassStep: 0,
+
+    unlock() {
+      this.beep(740, 0.08, "triangle", 0.06);
+      setTimeout(() => this.beep(920, 0.09, "triangle", 0.05), 60);
+    },
+
+    achievement() {
+      this.beep(520, 0.09, "sine", 0.08);
+      setTimeout(() => this.beep(780, 0.12, "triangle", 0.07), 80);
+    },
+
+    ensure() {
+      if (this.ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.sfxGain = this.ctx.createGain();
+      this.musicGain = this.ctx.createGain();
+      this.master.gain.value = this.muted ? 0 : 1;
+      this.sfxGain.gain.value = 1;
+      this.musicGain.gain.value = 0.18;
+      this.sfxGain.connect(this.master);
+      this.musicGain.connect(this.master);
+      this.master.connect(this.ctx.destination);
+    },
+
+    async unlockAudio() {
+      this.ensure();
+      if (!this.ctx) return;
+      if (this.ctx.state !== "running") {
+        try { await this.ctx.resume(); } catch (e) {}
+      }
+      this.unlocked = true;
+      if (!this.musicStarted) this.startMusic();
+    },
+
+    setMuted(v) {
+      this.muted = v;
+      save.muted = v;
+      persist();
+      if (this.master) this.master.gain.value = v ? 0 : 1;
+      ui.muteBtn.textContent = `Lyd: ${v ? "Av" : "På"}`;
+      ui.muteBtn.classList.toggle("muteOff", v);
+    },
+
+    beep(freq = 440, dur = 0.08, type = "sine", vol = 0.05, slideTo = null) {
+      if (!this.unlocked || this.muted || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), t + dur);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    },
+
+    noiseBurst(dur = 0.08, vol = 0.05, hp = 600) {
+      if (!this.unlocked || this.muted || !this.ctx) return;
+      const sr = this.ctx.sampleRate;
+      const len = Math.floor(sr * dur);
+      const buffer = this.ctx.createBuffer(1, len, sr);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.value = hp;
+      const gain = this.ctx.createGain();
+      gain.gain.value = vol;
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain);
+      src.start();
+    },
+
+    coin() { this.beep(980, 0.06, "triangle", 0.045, 1320); },
+    dash() { this.beep(180, 0.08, "sawtooth", 0.05, 70); this.noiseBurst(0.05, 0.03, 900); },
+    hit() { this.beep(120, 0.18, "square", 0.08, 40); this.noiseBurst(0.12, 0.05, 500); },
+    shield() { this.beep(420, 0.07, "sine", 0.05); setTimeout(() => this.beep(620, 0.09, "triangle", 0.05), 40); },
+    power() { this.beep(520, 0.08, "triangle", 0.05); setTimeout(() => this.beep(700, 0.08, "triangle", 0.05), 50); },
+    bossHit() { this.beep(160, 0.12, "square", 0.06, 120); },
+    bossDie() {
+      this.beep(220, 0.13, "sawtooth", 0.06);
+      setTimeout(() => this.beep(330, 0.14, "triangle", 0.06), 90);
+      setTimeout(() => this.beep(520, 0.18, "triangle", 0.06), 170);
+    },
+    gameOver() {
+      this.beep(200, 0.12, "sawtooth", 0.06, 100);
+      setTimeout(() => this.beep(120, 0.25, "sine", 0.05, 60), 90);
+    },
+    wave() {
+      this.beep(350, 0.08, "triangle", 0.05);
+      setTimeout(() => this.beep(520, 0.12, "triangle", 0.05), 70);
+    },
+
+    startMusic() {
+      if (!this.ctx || this.musicStarted) return;
+      this.musicStarted = true;
+      this.musicNext = this.ctx.currentTime + 0.05;
+      this.bassStep = 0;
+    },
+
+    updateMusic() {
+      if (!this.unlocked || this.muted || !this.ctx || !this.musicStarted) return;
+      const now = this.ctx.currentTime;
+      while (this.musicNext < now + 0.12) {
+        const t = this.musicNext;
+        const scale = [220, 261.63, 293.66, 329.63, 392.0];
+        const bass = [110, 110, 146.83, 130.81][this.bassStep % 4];
+        const note = scale[(this.bassStep * 2) % scale.length];
+        this.playMusicNote(bass, 0.16, t, "sine", 0.04, true);
+        if (this.bassStep % 2 === 0) this.playMusicNote(note, 0.08, t + 0.04, "triangle", 0.025, false);
+        if (game.running && chance(0.25)) this.playMusicNote(note * 2, 0.05, t + 0.1, "triangle", 0.012, false);
+        this.musicNext += 0.28;
+        this.bassStep++;
+      }
+    },
+
+    playMusicNote(freq, dur, t, type, vol, lowpass = false) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+      if (lowpass) {
+        const f = this.ctx.createBiquadFilter();
+        f.type = "lowpass";
+        f.frequency.value = 320;
+        osc.connect(f);
+        f.connect(gain);
+      } else {
+        osc.connect(gain);
+      }
+
+      gain.connect(this.musicGain);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    }
+  };
+
+  AudioFx.setMuted(!!save.muted);
+
+  function challengeProgressValue() {
+    if (daily.type === "coins") return game.dailyCoins;
+    if (daily.type === "score") return Math.floor(game.score);
+    if (daily.type === "combo") return game.maxComboRun;
+    if (daily.type === "boss") return game.bossesDefeatedRun;
+    return 0;
+  }
+
+  function challengeComplete() {
+    return challengeProgressValue() >= daily.target;
+  }
+
+  function updateChallengeUI() {
+    daily = getDailyChallenge();
+    ui.challengeText.textContent = `${daily.label}: ${daily.target}`;
+    ui.challengeProgress.textContent = `${Math.min(challengeProgressValue(), daily.target)}/${daily.target}`;
+  }
+
+  function unlockAchievement(id) {
+    if (save.achievements[id]) return;
+    save.achievements[id] = true;
+    persist();
+    renderAchievements();
+    toast("Achievement låst opp", 1.0);
+    const ach = achievements.find(a => a.id === id);
+    showBanner("ACHIEVEMENT", ach ? ach.name : id, 1.2);
+    AudioFx.achievement();
+  }
+
+  function unlockSkin(id) {
+    if (save.skinsUnlocked[id]) return;
+    save.skinsUnlocked[id] = true;
+    persist();
+    renderSkins();
+    toast(`Nytt skin: ${skins[id].name}`, 1.2);
+    showBanner("SKIN UNLOCKED", skins[id].name, 1.2);
+    AudioFx.unlock();
+  }
+
+  function checkUnlocks() {
+    if (save.totalCoins >= 300) unlockSkin("gold");
+    if (save.bestCombo >= 20) unlockSkin("nova");
+    if (save.totalBossesDefeated >= 3) unlockSkin("mint");
+    if (save.bestScore >= 5000) unlockSkin("void");
+
+    if (save.runs >= 1) unlockAchievement("first_run");
+    if (save.bestCombo >= 10) unlockAchievement("combo10");
+    if (save.bestCombo >= 20) unlockAchievement("combo20");
+    if (save.bestScore >= 2000) unlockAchievement("score2000");
+    if (save.bestScore >= 5000) unlockAchievement("score5000");
+    if (save.totalCoins >= 300) unlockAchievement("coins300");
+    if (save.totalBossesDefeated >= 1) unlockAchievement("boss1");
+    if (save.totalBossesDefeated >= 3) unlockAchievement("boss3");
+    if (Object.values(save.dailyCompletions).some(Boolean)) unlockAchievement("daily1");
+  }
+
+  function renderSkins() {
+    ui.skinRow.innerHTML = "";
+    Object.entries(skins).forEach(([id, skin]) => {
+      const unlocked = !!save.skinsUnlocked[id];
+      const div = document.createElement("div");
+      div.className = "skinCard";
+      div.style.opacity = unlocked ? "1" : ".58";
+      div.innerHTML = `
+        <div class="skinDot" style="background:${skin.color}; color:${skin.color};"></div>
+        <div class="skinName">${skin.name}${save.selectedSkin === id ? " ✓" : ""}</div>
+        <div class="skinMeta">${unlocked ? "Trykk for å velge" : skin.unlock}</div>
+      `;
+      div.addEventListener("click", () => {
+        if (!unlocked) return;
+        save.selectedSkin = id;
+        persist();
+        renderSkins();
+        refreshMenuStats();
+        toast(`Skin valgt: ${skin.name}`, 0.9);
+      });
+      ui.skinRow.appendChild(div);
+    });
+  }
+
+  function renderAchievements() {
+    ui.achList.innerHTML = "";
+    achievements.forEach(a => {
+      const done = !!save.achievements[a.id];
+      const div = document.createElement("div");
+      div.className = "achCard";
+      div.style.opacity = done ? "1" : ".56";
+      div.innerHTML = `
+        <div class="achName">${done ? "🏆 " : "▫️ "}${a.name}</div>
+        <div class="achMeta">${a.desc}</div>
+      `;
+      ui.achList.appendChild(div);
+    });
+  }
+
+  function renderBoard() {
+    ui.boardList.innerHTML = "";
+    const rows = save.localBoard.slice().sort((a, b) => b.score - a.score).slice(0, 15);
+
+    if (!rows.length) {
+      ui.boardList.innerHTML = `<div class="boardCard"><div class="achName">Ingen entries ennå</div><div class="boardMeta">Spill noen runder først.</div></div>`;
+      return;
+    }
+
+    rows.forEach((r, i) => {
+      const div = document.createElement("div");
+      div.className = "boardCard";
+      div.style.display = "block";
+      div.style.marginBottom = "8px";
+      div.innerHTML = `
+        <div class="achName">#${i + 1} • ${r.score}</div>
+        <div class="boardMeta">Combo x${r.combo} • Coins ${r.coins} • Boss ${r.bosses} • ${r.date}</div>
+      `;
+      ui.boardList.appendChild(div);
+    });
+  }
+
+  function refreshMenuStats() {
+    ui.menuBest.textContent = save.bestScore;
+    ui.menuBestCombo.textContent = "x" + save.bestCombo;
+    ui.menuRuns.textContent = save.runs;
+    ui.menuCoinsTotal.textContent = save.totalCoins;
+    ui.menuBosses.textContent = save.totalBossesDefeated;
+    ui.menuSkin.textContent = skins[save.selectedSkin]?.name || "Core";
+    ui.bestText.textContent = save.bestScore;
+  }
+
+  function addShake(a = 8) {
+    game.screenShake = Math.max(game.screenShake, a);
+  }
+
+  function addRing(x, y, color, maxR = 60) {
+    rings.push({ x, y, color, r: 8, maxR, age: 0, life: 0.45 });
+  }
+
+  function addParticles(x, y, color, count = 12, speed = 120) {
+    for (let i = 0; i < count; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const sp = rand(speed * 0.35, speed);
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        size: rand(2, 5),
+        color,
+        age: 0,
+        life: rand(0.3, 0.75)
+      });
+    }
+  }
+
+  function updateHUD() {
+    ui.scoreText.textContent = Math.floor(game.score);
+    ui.comboText.textContent = "x" + game.combo;
+    ui.coinsText.textContent = game.coins;
+    ui.bestText.textContent = save.bestScore;
+    ui.bossText.textContent = boss ? Math.max(0, Math.ceil(boss.hp)) : "-";
+    ui.chargeFill.style.width = `${Math.floor(clamp(game.charge, 0, 100))}%`;
+    updateChallengeUI();
+  }
+
+  function resetRun() {
+    game.running = true;
+    game.paused = false;
+    game.over = false;
+    game.t = 0;
+    game.score = 0;
+    game.coins = 0;
+    game.charge = 0;
+    game.combo = 1;
+    game.maxComboRun = 1;
+    game.comboTimer = 0;
+    game.difficulty = 1;
+    game.spawnTimer = 0.5;
+    game.coinTimer = 0.7;
+    game.powerTimer = 5.5;
+    game.wave = 1;
+    game.waveTimer = 0;
+    game.bossTimer = 14;
+    game.bossActive = false;
+    game.bossesDefeatedRun = 0;
+    game.screenShake = 0;
+    game.flash = 0;
+    game.dailyCoins = 0;
+
+    player.x = W * 0.5;
+    player.y = H * 0.78;
+    player.targetX = player.x;
+    player.invuln = 0;
+    player.dash = 0;
+    player.shield = 0;
+    player.magnet = 0;
+    player.slow = 0;
+    player.trail.length = 0;
+    player.alive = true;
+
+    boss = null;
+    obstacles.length = 0;
+    coinItems.length = 0;
+    powerups.length = 0;
+    particles.length = 0;
+    rings.length = 0;
+    bullets.length = 0;
+
+    hide(ui.menu);
+    hide(ui.gameOver);
+    hide(ui.boardModal);
+    ui.pauseBtn.textContent = "Pause";
+    updateHUD();
+    showBanner("WAVE 1", "Greit. Nå starter kaoset.", 1.2);
+    AudioFx.wave();
+  }
+
+  function endRun() {
+    game.running = false;
+    game.over = true;
+
+    save.runs++;
+    save.totalCoins += game.coins;
+    save.bestScore = Math.max(save.bestScore, Math.floor(game.score));
+    save.bestCombo = Math.max(save.bestCombo, game.maxComboRun);
+    save.totalBossesDefeated += game.bossesDefeatedRun;
+
+    const d = new Date();
+    save.localBoard.push({
+      score: Math.floor(game.score),
+      combo: game.maxComboRun,
+      coins: game.coins,
+      bosses: game.bossesDefeatedRun,
+      date: `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)}`
+    });
+    save.localBoard = save.localBoard.sort((a, b) => b.score - a.score).slice(0, 30);
+
+    if (challengeComplete()) save.dailyCompletions[daily.key] = true;
+
+    persist();
+    checkUnlocks();
+    renderBoard();
+    refreshMenuStats();
+    renderAchievements();
+    renderSkins();
+
+    ui.finalScore.textContent = Math.floor(game.score);
+    ui.finalCoins.textContent = game.coins;
+    ui.finalCombo.textContent = "x" + game.maxComboRun;
+    ui.finalBosses.textContent = game.bossesDefeatedRun;
+    ui.finalDaily.textContent = challengeComplete() ? "Ja" : "Nei";
+    ui.finalBest.textContent = save.bestScore;
+    ui.finalMessage.textContent =
+      Math.floor(game.score) >= save.bestScore
+        ? "Ny highscore. Hjernen klapper som en sjøløve."
+        : game.bossesDefeatedRun > 0
+          ? "Bossen døde i hvert fall. Det teller."
+          : "Det gikk galt. Men på en visuelt tilfredsstillende måte.";
+
+    show(ui.gameOver);
+    AudioFx.gameOver();
+  }
+
+  function spawnObstacle(type = "orb") {
+    const speed = 230 + game.difficulty * 38;
+
+    if (type === "orb") {
+      obstacles.push({
+        type: "orb",
+        x: rand(36, W - 36),
+        y: -30,
+        r: rand(17, 28),
+        vx: rand(-30, 30),
+        vy: speed,
+        pulse: rand(0, Math.PI * 2),
+        hue: chance(0.5) ? "cyan" : "pink"
+      });
+    } else if (type === "double") {
+      const gap = rand(95, 145);
+      const center = rand(80 + gap / 2, W - 80 - gap / 2);
+      obstacles.push({
+        type: "orb", x: center - gap / 2, y: -30, r: rand(16, 22), vx: rand(-25, 25), vy: speed, pulse: rand(0, 7), hue: "cyan"
+      });
+      obstacles.push({
+        type: "orb", x: center + gap / 2, y: -70, r: rand(16, 22), vx: rand(-25, 25), vy: speed, pulse: rand(0, 7), hue: "pink"
+      });
+    } else if (type === "wall") {
+      const gapW = clamp(110 - game.difficulty * 3.5, 70, 110);
+      const gapX = rand(50, W - gapW - 50);
+      const leftW = gapX;
+      const rightW = W - gapX - gapW;
+
+      if (leftW > 24) {
+        obstacles.push({
+          type: "rect", x: leftW / 2, y: -18, w: leftW, h: 24, vx: 0, vy: speed * 1.05, pulse: rand(0, 7), hue: "cyan"
+        });
+      }
+      if (rightW > 24) {
+        obstacles.push({
+          type: "rect", x: gapX + gapW + rightW / 2, y: -18, w: rightW, h: 24, vx: 0, vy: speed * 1.05, pulse: rand(0, 7), hue: "pink"
+        });
+      }
+    }
+  }
+
+  function spawnCoinLine() {
+    const count = randi(4, 8);
+    const startX = rand(50, W - 50);
+    const dx = rand(-18, 18);
+    const spacing = rand(34, 42);
+
+    for (let i = 0; i < count; i++) {
+      coinItems.push({
+        x: clamp(startX + dx * i, 28, W - 28),
+        y: -22 - i * spacing,
+        r: 8,
+        vy: 185 + game.difficulty * 18,
+        spin: rand(0, Math.PI * 2)
+      });
+    }
+  }
+
+  function spawnPowerup() {
+    const types = ["shield", "magnet", "slow"];
+    const type = types[randi(0, types.length - 1)];
+    powerups.push({
+      type,
+      x: rand(40, W - 40),
+      y: -30,
+      r: 14,
+      vy: 175 + game.difficulty * 10,
+      spin: 0
+    });
+  }
+
+  function spawnBoss() {
+    game.bossActive = true;
+    boss = {
+      x: W * 0.5,
+      y: 110,
+      vx: 140,
+      r: 34,
+      hp: 12 + Math.floor(game.wave * 1.7),
+      maxHp: 12 + Math.floor(game.wave * 1.7),
+      shootTimer: 1.1,
+      pulse: 0,
+      entry: 1.3
+    };
+    showBanner("BOSS WAVE", "Nå blir det personlig.", 1.3);
+    AudioFx.wave();
+    addShake(12);
+  }
+
+  function bossTakeHit() {
+    if (!boss) return;
+    boss.hp -= 1;
+    AudioFx.bossHit();
+    addShake(8);
+    addRing(boss.x, boss.y, "#ff4fd8", 70);
+    addParticles(boss.x, boss.y, "#ff4fd8", 12, 160);
+    game.score += 90 * game.combo;
+
+    if (boss.hp <= 0) {
+      AudioFx.bossDie();
+      addRing(boss.x, boss.y, "#ffd54f", 140);
+      addParticles(boss.x, boss.y, "#ffd54f", 34, 240);
+      game.score += 600;
+      game.bossesDefeatedRun += 1;
+      game.bossActive = false;
+      boss = null;
+      showBanner("BOSS DOWN", "Fint. Den sluttet å eksistere.", 1.2);
+      toast("Boss slått", 1.0);
+    }
+  }
+
+  function collectCoin(c, index) {
+    coinItems.splice(index, 1);
+    game.coins++;
+    game.dailyCoins++;
+    game.score += 12 * game.combo;
+    game.charge = clamp(game.charge + 4.2, 0, 100);
+    game.combo = clamp(game.combo + 1, 1, 99);
+    game.maxComboRun = Math.max(game.maxComboRun, game.combo);
+    game.comboTimer = 2.4;
+    addParticles(c.x, c.y, "#ffd54f", 8, 120);
+    AudioFx.coin();
+  }
+
+  function grantPower(type) {
+    if (type === "shield") {
+      player.shield = 1;
+      showBanner("SHIELD", "Du tåler ett treff.", 0.8);
+      AudioFx.shield();
+    } else if (type === "magnet") {
+      player.magnet = 6;
+      showBanner("MAGNET", "Coins trekkes mot deg.", 0.8);
+      AudioFx.power();
+    } else if (type === "slow") {
+      player.slow = 4.2;
+      showBanner("SLOW", "Fysikken tok en kaffepause.", 0.8);
+      AudioFx.power();
+    }
+  }
+
+  function breakCombo() {
+    if (game.combo >= 8) toast("Combo brutt", 0.8);
+    game.combo = 1;
+    game.comboTimer = 0;
+  }
+
+  function dash() {
+    if (!game.running || game.paused || game.charge < 50 || player.dash > 0) return;
+
+    game.charge -= 50;
+    player.dash = 0.18;
+    player.invuln = Math.max(player.invuln, 0.18);
+    addRing(player.x, player.y, "#ffffff", 80);
+    addParticles(player.x, player.y, "#ffffff", 20, 220);
+    addShake(12);
+    AudioFx.dash();
+    toast("DASH", 0.4);
+
+    if (boss && dist(player.x, player.y, boss.x, boss.y) < player.r + boss.r + 28) {
+      bossTakeHit();
+    }
+  }
+
+  function playerHit(x, y) {
+    if (player.invuln > 0) return;
+
+    if (player.shield > 0) {
+      player.shield = 0;
+      player.invuln = 1.0;
+      game.flash = 0.5;
+      addShake(14);
+      addRing(x, y, "#73ffb9", 90);
+      addParticles(x, y, "#73ffb9", 24, 220);
+      AudioFx.shield();
+      breakCombo();
+      toast("Shield reddet deg", 1.0);
+      return;
+    }
+
+    player.alive = false;
+    game.flash = 0.95;
+    addShake(20);
+    addRing(player.x, player.y, "#ff6d7e", 120);
+    addParticles(player.x, player.y, "#ff6d7e", 40, 260);
+    AudioFx.hit();
+    setTimeout(endRun, 360);
+  }
+
+  function rectCircleHit(cx, cy, cr, rx, ry, rw, rh) {
+    const px = clamp(cx, rx - rw / 2, rx + rw / 2);
+    const py = clamp(cy, ry - rh / 2, ry + rh / 2);
+    return dist(cx, cy, px, py) < cr;
+  }
+
+  let pointerActive = false;
+  let lastTap = 0;
+
+  function getX(e) {
+    if (e.touches && e.touches[0]) return e.touches[0].clientX;
+    if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientX;
+    return e.clientX;
+  }
+
+  function onDown(e) {
+    const now = performance.now();
+    player.targetX = getX(e);
+    pointerActive = true;
+    if (now - lastTap < 260) dash();
+    lastTap = now;
+  }
+
+  function onMove(e) {
+    if (!pointerActive) return;
+    player.targetX = getX(e);
+  }
+
+  function onUp() {
+    pointerActive = false;
+  }
+
+  canvas.addEventListener("touchstart", onDown, { passive: true });
+  canvas.addEventListener("touchmove", onMove, { passive: true });
+  canvas.addEventListener("touchend", onUp, { passive: true });
+  canvas.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+
+  document.addEventListener("gesturestart", e => e.preventDefault());
+
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  ui.playBtn.addEventListener("click", async () => {
+    await AudioFx.unlockAudio();
+    resetRun();
+  });
+
+  ui.retryBtn.addEventListener("click", async () => {
+    await AudioFx.unlockAudio();
+    resetRun();
+  });
+
+  ui.menuBtn.addEventListener("click", () => {
+    hide(ui.gameOver);
+    show(ui.menu);
+  });
+
+  ui.boardBtn.addEventListener("click", () => {
+    renderBoard();
+    show(ui.boardModal);
+  });
+
+  ui.boardCloseBtn.addEventListener("click", () => hide(ui.boardModal));
+
+  ui.boardClearBtn.addEventListener("click", () => {
+    save.localBoard = [];
+    persist();
+    renderBoard();
+  });
+
+  ui.muteBtn.addEventListener("click", async () => {
+    await AudioFx.unlockAudio();
+    AudioFx.setMuted(!AudioFx.muted);
+  });
+
+  ui.pauseBtn.addEventListener("click", () => {
+    if (!game.running) return;
+    game.paused = !game.paused;
+    ui.pauseBtn.textContent = game.paused ? "Fortsett" : "Pause";
+    showBanner(game.paused ? "PAUSE" : "FORTSETT", game.paused ? "Spillet puster." : "Kaoset fortsetter.", 0.6);
+  });
+
+  function update(dt) {
+    AudioFx.updateMusic();
+
+    if (toastTimer > 0) {
+      toastTimer -= dt;
+      if (toastTimer <= 0) ui.toast.classList.remove("show");
+    }
+
+    if (bannerTimer > 0) {
+      bannerTimer -= dt;
+      if (bannerTimer <= 0) hideBanner();
+    }
+
+    if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 30);
+    if (game.flash > 0) game.flash = Math.max(0, game.flash - dt * 1.8);
+
+    if (!game.running || game.paused) return;
+
+    const slowFactor = player.slow > 0 ? 0.62 : 1;
+    const edt = dt * slowFactor;
+
+    game.t += edt;
+    game.score += edt * (11 + game.difficulty * 4.3) * game.combo * 0.25;
+    game.charge = clamp(game.charge + edt * 7.5, 0, 100);
+
+    if (player.invuln > 0) player.invuln -= dt;
+    if (player.dash > 0) player.dash -= dt;
+    if (player.slow > 0) player.slow -= dt;
+    if (player.magnet > 0) player.magnet -= dt;
+
+    if (game.comboTimer > 0) {
+      game.comboTimer -= dt;
+      if (game.comboTimer <= 0) breakCombo();
+    }
+
+    game.waveTimer += edt;
+    if (game.waveTimer >= 12 && !game.bossActive) {
+      game.waveTimer = 0;
+      game.wave++;
+      game.difficulty += 0.33;
+      showBanner(`WAVE ${game.wave}`, "Mer fart. Mindre medfølelse.", 1.0);
+      AudioFx.wave();
+    }
+
+    game.bossTimer -= edt;
+    if (game.bossTimer <= 0 && !game.bossActive && !boss) {
+      spawnBoss();
+      game.bossTimer = 16 + Math.max(0, 7 - game.wave) * 0.2;
+    }
+
+    const moveSpeed = player.dash > 0 ? 25 : 12;
+    player.x = lerp(player.x, clamp(player.targetX, 24, W - 24), 1 - Math.pow(0.001, edt * moveSpeed));
+    player.trail.push({ x: player.x, y: player.y, life: 0.3 });
+    if (player.trail.length > 14) player.trail.shift();
+
+    for (let i = player.trail.length - 1; i >= 0; i--) {
+      player.trail[i].life -= dt;
+      if (player.trail[i].life <= 0) player.trail.splice(i, 1);
+    }
+
+    if (!game.bossActive) {
+      game.spawnTimer -= edt;
+      if (game.spawnTimer <= 0) {
+        const roll = Math.random();
+        if (game.difficulty < 2) {
+          spawnObstacle(roll < 0.72 ? "orb" : "double");
+        } else {
+          if (roll < 0.42) spawnObstacle("orb");
+          else if (roll < 0.72) spawnObstacle("double");
+          else spawnObstacle("wall");
+        }
+        game.spawnTimer = clamp(0.84 - game.difficulty * 0.055, 0.34, 0.84);
+      }
+    } else {
+      game.spawnTimer -= edt;
+      if (game.spawnTimer <= 0) {
+        spawnObstacle(chance(0.5) ? "double" : "orb");
+        game.spawnTimer = clamp(0.8 - game.difficulty * 0.03, 0.4, 0.8);
+      }
+    }
+
+    game.coinTimer -= edt;
+    if (game.coinTimer <= 0) {
+      spawnCoinLine();
+      game.coinTimer = rand(1.2, 2.0);
+    }
+
+    game.powerTimer -= dt;
+    if (game.powerTimer <= 0) {
+      spawnPowerup();
+      game.powerTimer = rand(6.4, 10.2);
+    }
+
+    if (boss) {
+      boss.pulse += edt * 5;
+
+      if (boss.entry > 0) {
+        boss.entry -= edt;
+        boss.y = lerp(-60, 110, 1 - boss.entry / 1.3);
+      } else {
+        boss.x += boss.vx * edt;
+        if (boss.x < boss.r + 10 || boss.x > W - boss.r - 10) boss.vx *= -1;
+
+        boss.shootTimer -= edt;
+        if (boss.shootTimer <= 0) {
+          boss.shootTimer = Math.max(0.5, 1.08 - game.difficulty * 0.03);
+          const n = chance(0.45) ? 3 : 2;
+          for (let i = 0; i < n; i++) {
+            const spread = n === 3 ? (i - 1) * 0.22 : (i === 0 ? -0.12 : 0.12);
+            bullets.push({
+              x: boss.x,
+              y: boss.y + boss.r,
+              vx: Math.sin(spread) * 140,
+              vy: 250 + game.difficulty * 22,
+              r: 9,
+              color: chance(0.5) ? "#ff4fd8" : "#b88cff"
+            });
+          }
+        }
+      }
+
+      if (player.dash > 0 && dist(player.x, player.y, boss.x, boss.y) < player.r + boss.r + 10) {
+        bossTakeHit();
+      }
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      o.x += o.vx * edt;
+      o.y += o.vy * edt;
+      o.pulse += edt * 4;
+
+      if (o.type === "orb") {
+        if (o.x < o.r || o.x > W - o.r) o.vx *= -1;
+        const hit = dist(player.x, player.y, o.x, o.y) < player.r + o.r - (player.dash > 0 ? 6 : 0);
+        if (hit) {
+          if (player.dash > 0) {
+            addParticles(o.x, o.y, o.hue === "cyan" ? "#57e4ff" : "#ff4fd8", 14, 170);
+            obstacles.splice(i, 1);
+            game.score += 25;
+          } else {
+            playerHit(o.x, o.y);
+            obstacles.splice(i, 1);
+            continue;
+          }
+        }
+      } else {
+        const hit = rectCircleHit(player.x, player.y, player.r - (player.dash > 0 ? 6 : 0), o.x, o.y, o.w, o.h);
+        if (hit) {
+          if (player.dash > 0) {
+            addParticles(o.x, o.y, o.hue === "cyan" ? "#57e4ff" : "#ff4fd8", 14, 170);
+            obstacles.splice(i, 1);
+            game.score += 30;
+          } else {
+            playerHit(o.x, o.y);
+            obstacles.splice(i, 1);
+            continue;
+          }
+        }
+      }
+
+      if (o.y > H + 50) {
+        obstacles.splice(i, 1);
+        game.score += 6 * game.combo;
+        game.combo = clamp(game.combo + 1, 1, 99);
+        game.maxComboRun = Math.max(game.maxComboRun, game.combo);
+        game.comboTimer = 2.0;
+        game.charge = clamp(game.charge + 2.5, 0, 100);
+      }
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += b.vx * edt;
+      b.y += b.vy * edt;
+
+      if (dist(player.x, player.y, b.x, b.y) < player.r + b.r - (player.dash > 0 ? 5 : 0)) {
+        if (player.dash > 0) {
+          addParticles(b.x, b.y, b.color, 10, 160);
+          bullets.splice(i, 1);
+          game.score += 18;
+        } else {
+          playerHit(b.x, b.y);
+          bullets.splice(i, 1);
+          continue;
+        }
+      }
+
+      if (b.y > H + 40 || b.x < -40 || b.x > W + 40) bullets.splice(i, 1);
+    }
+
+    for (let i = coinItems.length - 1; i >= 0; i--) {
+      const c = coinItems[i];
+      c.y += c.vy * edt;
+      c.spin += edt * 9;
+
+      if (player.magnet > 0) {
+        const dx = player.x - c.x;
+        const dy = player.y - c.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 180) {
+          const f = (180 - d) / 180;
+          c.x += (dx / Math.max(1, d)) * f * 280 * edt;
+          c.y += (dy / Math.max(1, d)) * f * 280 * edt;
+        }
+      }
+
+      if (dist(player.x, player.y, c.x, c.y) < player.r + c.r + 3) {
+        collectCoin(c, i);
+        continue;
+      }
+
+      if (c.y > H + 24) {
+        coinItems.splice(i, 1);
+      }
+    }
+
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      const p = powerups[i];
+      p.y += p.vy * edt;
+      p.spin += edt * 5;
+
+      if (dist(player.x, player.y, p.x, p.y) < player.r + p.r + 4) {
+        grantPower(p.type);
+        addRing(p.x, p.y, p.type === "shield" ? "#73ffb9" : p.type === "magnet" ? "#ffd54f" : "#57e4ff", 74);
+        addParticles(p.x, p.y, p.type === "shield" ? "#73ffb9" : p.type === "magnet" ? "#ffd54f" : "#57e4ff", 18, 180);
+        powerups.splice(i, 1);
+        continue;
+      }
+
+      if (p.y > H + 36) powerups.splice(i, 1);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.age += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.985;
+      p.vy *= 0.985;
+      if (p.age >= p.life) particles.splice(i, 1);
+    }
+
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const r = rings[i];
+      r.age += dt;
+      r.r = lerp(8, r.maxR, r.age / r.life);
+      if (r.age >= r.life) rings.splice(i, 1);
+    }
+
+    for (const s of stars) {
+      s.y += (35 + (180 + game.difficulty * 18) * 0.12 * s.z) * edt;
+      if (s.y > H + 2) {
+        s.y = -2;
+        s.x = Math.random() * W;
+      }
+    }
+
+    if (game.maxComboRun >= 10) unlockAchievement("combo10");
+    if (game.maxComboRun >= 20) unlockAchievement("combo20");
+    if (Math.floor(game.score) >= 2000) unlockAchievement("score2000");
+    if (Math.floor(game.score) >= 5000) unlockAchievement("score5000");
+
+    updateHUD();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawBackground() {
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, "#0d1733");
+    grd.addColorStop(1, "#070b16");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const s of stars) {
+      ctx.globalAlpha = 0.3 * s.z;
+      ctx.fillStyle = "#def6ff";
+      ctx.fillRect(s.x, s.y, s.s, s.s * 1.6);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(0, (game.t * 120) % 40);
+    ctx.strokeStyle = "rgba(87,228,255,.05)";
+    ctx.lineWidth = 1;
+
+    for (let y = -40; y < H + 40; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    for (let x = 0; x < W; x += Math.max(40, W / 8)) {
+      ctx.beginPath();
+      ctx.moveTo(x, -40);
+      ctx.lineTo(x, H + 40);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    if (game.combo >= 5) {
+      const a = clamp((game.combo - 4) / 15, 0, 0.22);
+      const g = ctx.createRadialGradient(W / 2, H * 0.76, 0, W / 2, H * 0.76, W * 0.48);
+      g.addColorStop(0, `rgba(255,79,216,${a})`);
+      g.addColorStop(1, "rgba(255,79,216,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawPlayer() {
+    const skin = skins[save.selectedSkin] || skins.core;
+
+    for (const t of player.trail) {
+      const a = Math.max(0, t.life / 0.3) * 0.36;
+      ctx.fillStyle = hexToRgba(skin.trail, a);
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, lerp(4, player.r * 0.9, a), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (player.shield > 0) {
+      ctx.strokeStyle = "rgba(115,255,185,.9)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r + 10 + Math.sin(game.t * 8) * 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (player.invuln > 0 && Math.floor(game.t * 28) % 2 === 0) return;
+
+    const glowR = player.r + (player.dash > 0 ? 20 : 12);
+    const g = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, glowR);
+    g.addColorStop(0, player.dash > 0 ? "rgba(255,255,255,.78)" : hexToRgba(skin.color, 0.82));
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = player.dash > 0 ? "#ffffff" : skin.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,.82)";
+    ctx.beginPath();
+    ctx.arc(player.x - 4, player.y - 4, player.r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawObstacles() {
+    for (const o of obstacles) {
+      const pulse = 1 + Math.sin(o.pulse) * 0.08;
+      const color = o.hue === "cyan" ? "#57e4ff" : "#ff4fd8";
+      const glow = o.hue === "cyan" ? "rgba(87,228,255,.34)" : "rgba(255,79,216,.34)";
+
+      if (o.type === "orb") {
+        const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 2.5);
+        g.addColorStop(0, glow);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r * pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,255,255,.7)";
+        ctx.beginPath();
+        ctx.arc(o.x - o.r * 0.28, o.y - o.r * 0.28, o.r * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 16;
+        const grad = ctx.createLinearGradient(-o.w / 2, -o.h / 2, o.w / 2, o.h / 2);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, "#fff");
+        ctx.fillStyle = grad;
+        roundRect(ctx, -o.w / 2, -o.h / 2, o.w, o.h, 9);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawCoins() {
+    for (const c of coinItems) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.spin);
+      ctx.shadowColor = "rgba(255,213,79,.5)";
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#ffd54f";
+      ctx.beginPath();
+      ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, c.r * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawPowerups() {
+    for (const p of powerups) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.spin);
+
+      let color = "#57e4ff";
+      if (p.type === "shield") color = "#73ffb9";
+      if (p.type === "magnet") color = "#ffd54f";
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#08101f";
+      ctx.font = "bold 14px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.type === "shield" ? "S" : p.type === "magnet" ? "M" : "T", 0, 1);
+      ctx.restore();
+    }
+  }
+
+  function drawBoss() {
+    if (!boss) return;
+
+    const pulse = 1 + Math.sin(boss.pulse) * 0.07;
+    const g = ctx.createRadialGradient(boss.x, boss.y, 0, boss.x, boss.y, boss.r * 2.8);
+    g.addColorStop(0, "rgba(255,79,216,.36)");
+    g.addColorStop(1, "rgba(255,79,216,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(boss.x, boss.y, boss.r * 2.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ff4fd8";
+    ctx.beginPath();
+    ctx.arc(boss.x, boss.y, boss.r * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(boss.x - 9, boss.y - 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(boss.x + 9, boss.y - 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(boss.x, boss.y + 4, 12, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    const barW = 110;
+    const hpP = clamp(boss.hp / boss.maxHp, 0, 1);
+    ctx.fillStyle = "rgba(255,255,255,.1)";
+    roundRect(ctx, boss.x - barW / 2, boss.y - boss.r - 28, barW, 10, 999);
+    ctx.fill();
+    ctx.fillStyle = "#ff4fd8";
+    roundRect(ctx, boss.x - barW / 2, boss.y - boss.r - 28, barW * hpP, 10, 999);
+    ctx.fill();
+  }
+
+  function drawBullets() {
+    for (const b of bullets) {
+      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 2.2);
+      g.addColorStop(0, hexToRgba(b.color, 0.34));
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      const a = 1 - p.age / p.life;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRings() {
+    for (const r of rings) {
+      const a = 1 - r.age / r.life;
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 3 * a + 1;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawStatusIcons() {
+    const y = H - 95;
+    let x = W - 28;
+    const icons = [];
+
+    if (player.magnet > 0) icons.push({ t: "M", c: "#ffd54f", time: player.magnet });
+    if (player.slow > 0) icons.push({ t: "T", c: "#57e4ff", time: player.slow });
+    if (player.shield > 0) icons.push({ t: "S", c: "#73ffb9", time: 99 });
+
+    for (const ic of icons) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.shadowColor = ic.c;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = ic.c;
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#08101f";
+      ctx.font = "bold 15px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ic.t, 0, 1);
+
+      if (ic.time < 90) {
+        ctx.fillStyle = "rgba(255,255,255,.92)";
+        ctx.font = "bold 10px Inter, sans-serif";
+        ctx.fillText(Math.ceil(ic.time), 0, 26);
+      }
+
+      ctx.restore();
+      x -= 40;
+    }
+  }
+
+  function drawFlash() {
+    if (game.flash <= 0) return;
+    ctx.fillStyle = `rgba(255,255,255,${game.flash * 0.38})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawPauseOverlay() {
+    if (!game.paused) return;
+    ctx.fillStyle = "rgba(5,8,16,.35)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(255,255,255,.92)";
+    ctx.font = "900 34px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("PAUSE", W / 2, H / 2 - 6);
+    ctx.font = "600 15px Inter, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.fillText("Trykk Fortsett når du er klar for mer kaos.", W / 2, H / 2 + 24);
+  }
+
+  function render() {
+    ctx.save();
+
+    if (game.screenShake > 0) {
+      ctx.translate(rand(-game.screenShake, game.screenShake), rand(-game.screenShake, game.screenShake));
+    }
+
+    drawBackground();
+    drawCoins();
+    drawPowerups();
+    drawObstacles();
+    drawBullets();
+    drawBoss();
+    drawRings();
+    drawParticles();
+    drawPlayer();
+    drawStatusIcons();
+    drawFlash();
+    drawPauseOverlay();
+
+    ctx.restore();
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  window.addEventListener("keydown", async (e) => {
+    const key = e.key.toLowerCase();
+
+    if ((e.key === " " || e.key === "Enter") && !game.running) {
+      await AudioFx.unlockAudio();
+      resetRun();
+      return;
+    }
+
+    if (key === "m") {
+      await AudioFx.unlockAudio();
+      AudioFx.setMuted(!AudioFx.muted);
+      return;
+    }
+
+    if (!game.running) return;
+
+    if (e.key === "ArrowLeft" || key === "a") player.targetX -= 90;
+    if (e.key === "ArrowRight" || key === "d") player.targetX += 90;
+    if (e.key === " " || key === "w") dash();
+
+    if (key === "p") {
+      game.paused = !game.paused;
+      ui.pauseBtn.textContent = game.paused ? "Fortsett" : "Pause";
+    }
+  });
+
+  refreshMenuStats();
+  renderAchievements();
+  renderSkins();
+  renderBoard();
+  updateHUD();
+  show(ui.menu);
+})();
+</script>
+</body>
+</html>
