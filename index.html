@@ -284,6 +284,7 @@
       opacity:0;
       transition:opacity .18s ease, transform .18s ease;
       white-space:nowrap;
+      pointer-events:none;
     }
 
     .toast.show{
@@ -445,6 +446,7 @@
       display:flex;
       gap:8px;
       pointer-events:auto;
+      z-index:5;
     }
 
     .miniBtn{
@@ -621,7 +623,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- MENU -->
     <div class="overlay" id="menu">
       <div class="modalCard">
         <div class="logo"><span>NEON</span> <span>DODGE V3</span></div>
@@ -636,7 +637,7 @@
             <button id="saveNameBtn" type="button" style="flex:0 0 auto; padding:14px 16px;">Lagre</button>
           </div>
           <div class="nameHelp">
-            Navnet ditt brukes på leaderboardet. Hold det kort og rent. Internett er allerede full av kaos.
+            Navnet ditt brukes på leaderboardet. Hold det kort og rent.
           </div>
         </div>
 
@@ -679,12 +680,11 @@
         <div class="achList" id="achList"></div>
 
         <div class="small">
-          Første trykk låser opp lyd. Nettlesere er noen snåle små troll.
+          Første trykk låser opp lyd. Nettlesere er rare små troll.
         </div>
       </div>
     </div>
 
-    <!-- GAME OVER -->
     <div class="overlay hidden" id="gameOver">
       <div class="modalCard">
         <div class="logo" style="font-size:40px;"><span>RUN</span> <span>OVER</span></div>
@@ -728,7 +728,6 @@
       </div>
     </div>
 
-    <!-- BOARD -->
     <div class="overlay hidden" id="boardModal">
       <div class="modalCard">
         <div class="logo" style="font-size:34px;"><span>WALL</span> <span>OF FAME</span></div>
@@ -761,29 +760,26 @@
     </div>
   </div>
 
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
     (() => {
       "use strict";
 
-      // =========================================================
-      // LEGG INN SUPABASE HER
-      // =========================================================
       const SUPABASE_URL = "https://xtxzwnkvjazdruymksyy.supabase.co";
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0eHp3bmt2amF6ZHJ1eW1rc3l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MzkwOTYsImV4cCI6MjA4OTExNTA5Nn0.5dbtY6-hIzbSegeID1m1U1Zbm05fNMGG5EnrFZLktko";
 
       const hasSupabaseConfig =
-        SUPABASE_URL &&
-        SUPABASE_ANON_KEY &&
+        !!SUPABASE_URL &&
+        !!SUPABASE_ANON_KEY &&
         !SUPABASE_URL.includes("LIM_INN") &&
-        !SUPABASE_ANON_KEY.includes("LIM_INN");
+        !SUPABASE_ANON_KEY.includes("LIM_INN") &&
+        window.supabase &&
+        typeof window.supabase.createClient === "function";
 
       const supabase = hasSupabaseConfig
-        ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
         : null;
 
-      const APP_VERSION = "3.0.0";
       const STORAGE_KEY = "neon_dodge_v3_save";
       const DEVICE_KEY = "neon_dodge_v3_device_id";
 
@@ -832,6 +828,7 @@
 
       function sanitizePlayerName(name) {
         return String(name || "")
+          .replace(/[<>]/g, "")
           .replace(/\s+/g, " ")
           .trim()
           .slice(0, 18);
@@ -840,7 +837,11 @@
       function getDeviceId() {
         let id = localStorage.getItem(DEVICE_KEY);
         if (!id) {
-          id = crypto.randomUUID();
+          if (window.crypto && crypto.randomUUID) {
+            id = crypto.randomUUID();
+          } else {
+            id = "dev-" + Date.now() + "-" + Math.floor(Math.random() * 1000000);
+          }
           localStorage.setItem(DEVICE_KEY, id);
         }
         return id;
@@ -989,6 +990,45 @@
         }
       }
 
+      const game = {
+        running: false,
+        paused: false,
+        over: false,
+        t: 0,
+        score: 0,
+        coins: 0,
+        charge: 0,
+        combo: 1,
+        maxComboRun: 1,
+        comboTimer: 0,
+        difficulty: 1,
+        spawnTimer: 0.5,
+        coinTimer: 0.7,
+        powerTimer: 5.5,
+        wave: 1,
+        waveTimer: 0,
+        bossTimer: 14,
+        bossActive: false,
+        bossesDefeatedRun: 0,
+        screenShake: 0,
+        flash: 0,
+        dailyCoins: 0
+      };
+
+      const player = {
+        x: 0,
+        y: 0,
+        targetX: 0,
+        r: 16,
+        invuln: 0,
+        dash: 0,
+        shield: 0,
+        magnet: 0,
+        slow: 0,
+        trail: [],
+        alive: true
+      };
+
       function resize() {
         W = window.innerWidth;
         H = window.innerHeight;
@@ -1039,7 +1079,7 @@
           this.ensure();
           if (!this.ctx) return;
           if (this.ctx.state !== "running") {
-            try { await this.ctx.resume(); } catch {}
+            try { await this.ctx.resume(); } catch (e) {}
           }
           this.unlocked = true;
           if (!this.musicStarted) this.startMusic();
@@ -1158,45 +1198,6 @@
       };
 
       AudioFx.setMuted(!!save.muted);
-
-      const game = {
-        running: false,
-        paused: false,
-        over: false,
-        t: 0,
-        score: 0,
-        coins: 0,
-        charge: 0,
-        combo: 1,
-        maxComboRun: 1,
-        comboTimer: 0,
-        difficulty: 1,
-        spawnTimer: 0.5,
-        coinTimer: 0.7,
-        powerTimer: 5.5,
-        wave: 1,
-        waveTimer: 0,
-        bossTimer: 14,
-        bossActive: false,
-        bossesDefeatedRun: 0,
-        screenShake: 0,
-        flash: 0,
-        dailyCoins: 0
-      };
-
-      const player = {
-        x: 0,
-        y: 0,
-        targetX: 0,
-        r: 16,
-        invuln: 0,
-        dash: 0,
-        shield: 0,
-        magnet: 0,
-        slow: 0,
-        trail: [],
-        alive: true
-      };
 
       function challengeProgressValue() {
         if (daily.type === "coins") return game.dailyCoins;
@@ -1583,6 +1584,56 @@
         }
       }
 
+      async function endRun() {
+        game.running = false;
+        game.over = true;
+
+        const finalScore = Math.floor(game.score);
+        const finalCoins = game.coins;
+        const finalCombo = game.maxComboRun;
+        const finalBosses = game.bossesDefeatedRun;
+
+        save.runs++;
+        save.totalCoins += finalCoins;
+        save.bestScore = Math.max(save.bestScore, finalScore);
+        save.bestCombo = Math.max(save.bestCombo, finalCombo);
+        save.totalBossesDefeated += finalBosses;
+
+        if (challengeComplete()) save.dailyCompletions[daily.key] = true;
+        persist();
+
+        checkUnlocks();
+        refreshMenuStats();
+        renderAchievements();
+        renderSkins();
+
+        ui.finalScore.textContent = finalScore;
+        ui.finalCoins.textContent = finalCoins;
+        ui.finalCombo.textContent = "x" + finalCombo;
+        ui.finalBosses.textContent = finalBosses;
+        ui.finalDaily.textContent = challengeComplete() ? "Ja" : "Nei";
+        ui.finalBest.textContent = save.bestScore;
+
+        ui.finalMessage.textContent =
+          finalScore >= save.bestScore
+            ? "Ny highscore. Hjernen klapper som en sjøløve."
+            : finalBosses > 0
+            ? "Bossen døde i hvert fall. Det teller."
+            : "Det gikk galt. Men på en visuelt tilfredsstillende måte.";
+
+        show(ui.gameOver);
+        AudioFx.gameOver();
+
+        try {
+          await markGamePlayed(finalScore);
+          await submitScore(finalScore, finalCoins, finalCombo, finalBosses);
+          await loadBoardStats();
+          await loadLeaderboard();
+        } catch (e) {
+          console.warn("Feil ved lagring etter runde:", e);
+        }
+      }
+
       function playerHit(x, y) {
         if (player.invuln > 0) return;
 
@@ -1605,7 +1656,7 @@
         addRing(player.x, player.y, "#ff6d7e", 120);
         addParticles(player.x, player.y, "#ff6d7e", 40, 260);
         AudioFx.hit();
-        setTimeout(() => endRun(), 360);
+        setTimeout(() => { endRun(); }, 360);
       }
 
       function rectCircleHit(cx, cy, cr, rx, ry, rw, rh) {
@@ -1654,9 +1705,6 @@
         lastTouchEnd = now;
       }, { passive: false });
 
-      // =========================================================
-      // SUPABASE
-      // =========================================================
       let pingInterval = null;
 
       async function ensurePlayerInSupabase() {
@@ -1683,11 +1731,11 @@
               best_score: save.bestScore || 0
             });
             if (error) console.warn("Kunne ikke opprette spiller:", error.message);
-          } else if (playerName && existing.player_name !== playerName) {
+          } else if (existing.player_name !== (playerName || null)) {
             const { error } = await supabase
               .from("players")
               .update({
-                player_name: playerName,
+                player_name: playerName || null,
                 last_seen_at: new Date().toISOString()
               })
               .eq("device_id", deviceId);
@@ -1699,11 +1747,15 @@
       }
 
       async function savePlayerNameToSupabase() {
-        if (!supabase) return;
         const cleanName = sanitizePlayerName(ui.playerNameInput.value);
         save.playerName = cleanName;
         persist();
         refreshMenuStats();
+
+        if (!supabase) {
+          toast("Navn lagret lokalt", 0.9);
+          return;
+        }
 
         try {
           await ensurePlayerInSupabase();
@@ -1726,6 +1778,7 @@
           }
         } catch (err) {
           console.warn("savePlayerNameToSupabase-feil:", err);
+          toast("Navn lagret lokalt", 0.9);
         }
       }
 
@@ -1786,8 +1839,8 @@
         if (!supabase) {
           ui.boardList.innerHTML = `
             <div class="boardCard">
-              <div class="achName">Supabase ikke konfigurert</div>
-              <div class="boardMeta">Legg inn SUPABASE_URL og SUPABASE_ANON_KEY i filen.</div>
+              <div class="achName">Supabase ikke tilgjengelig</div>
+              <div class="boardMeta">Spillet virker likevel lokalt.</div>
             </div>
           `;
           return;
@@ -1839,7 +1892,7 @@
           ui.boardList.innerHTML = `
             <div class="boardCard">
               <div class="achName">Kunne ikke laste leaderboard</div>
-              <div class="boardMeta">Sjekk RLS/policies eller Supabase-nøkler.</div>
+              <div class="boardMeta">Sjekk Supabase-tabeller og policies.</div>
             </div>
           `;
         }
@@ -1856,22 +1909,21 @@
         try {
           const activeCutoff = new Date(Date.now() - 90 * 1000).toISOString();
 
-          const [{ count: activeCount, error: activeErr }, { count: totalCount, error: totalErr }] =
-            await Promise.all([
-              supabase
-                .from("active_players")
-                .select("*", { count: "exact", head: true })
-                .gt("last_ping_at", activeCutoff),
-              supabase
-                .from("players")
-                .select("*", { count: "exact", head: true })
-            ]);
+          const [activeRes, totalRes] = await Promise.all([
+            supabase
+              .from("active_players")
+              .select("*", { count: "exact", head: true })
+              .gt("last_ping_at", activeCutoff),
+            supabase
+              .from("players")
+              .select("*", { count: "exact", head: true })
+          ]);
 
-          if (activeErr) console.warn("active count-feil:", activeErr.message);
-          if (totalErr) console.warn("total count-feil:", totalErr.message);
+          if (activeRes.error) console.warn("active count-feil:", activeRes.error.message);
+          if (totalRes.error) console.warn("total count-feil:", totalRes.error.message);
 
-          ui.activeNowText.textContent = String(activeCount || 0);
-          ui.totalPlayersText.textContent = String(totalCount || 0);
+          ui.activeNowText.textContent = String(activeRes.count || 0);
+          ui.totalPlayersText.textContent = String(totalRes.count || 0);
           ui.boardPlayerName.textContent = save.playerName || "-";
         } catch (err) {
           console.warn("loadBoardStats-feil:", err);
@@ -1906,7 +1958,9 @@
         if (!supabase) return;
         if (pingInterval) clearInterval(pingInterval);
         pingActivePlayer();
-        pingInterval = setInterval(pingActivePlayer, 20000);
+        pingInterval = setInterval(() => {
+          pingActivePlayer();
+        }, 20000);
       }
 
       async function removePresence() {
@@ -1918,77 +1972,57 @@
         }
       }
 
-      async function endRun() {
-        game.running = false;
-        game.over = true;
-
-        const finalScore = Math.floor(game.score);
-        const finalCoins = game.coins;
-        const finalCombo = game.maxComboRun;
-        const finalBosses = game.bossesDefeatedRun;
-
-        save.runs++;
-        save.totalCoins += finalCoins;
-        save.bestScore = Math.max(save.bestScore, finalScore);
-        save.bestCombo = Math.max(save.bestCombo, finalCombo);
-        save.totalBossesDefeated += finalBosses;
-
-        if (challengeComplete()) save.dailyCompletions[daily.key] = true;
-        persist();
-
-        checkUnlocks();
-        refreshMenuStats();
-        renderAchievements();
-        renderSkins();
-
-        ui.finalScore.textContent = finalScore;
-        ui.finalCoins.textContent = finalCoins;
-        ui.finalCombo.textContent = "x" + finalCombo;
-        ui.finalBosses.textContent = finalBosses;
-        ui.finalDaily.textContent = challengeComplete() ? "Ja" : "Nei";
-        ui.finalBest.textContent = save.bestScore;
-
-        ui.finalMessage.textContent =
-          finalScore >= save.bestScore
-            ? "Ny highscore. Hjernen klapper som en sjøløve."
-            : finalBosses > 0
-            ? "Bossen døde i hvert fall. Det teller."
-            : "Det gikk galt. Men på en visuelt tilfredsstillende måte.";
-
-        show(ui.gameOver);
-        AudioFx.gameOver();
-
-        await markGamePlayed(finalScore);
-        await submitScore(finalScore, finalCoins, finalCombo, finalBosses);
-        await loadBoardStats();
-        await loadLeaderboard();
-      }
-
       ui.saveNameBtn.addEventListener("click", async () => {
-        await savePlayerNameToSupabase();
+        try {
+          await savePlayerNameToSupabase();
+        } catch (err) {
+          console.error("Feil ved lagring av navn:", err);
+          toast("Kunne ikke lagre navn", 1.0);
+        }
       });
 
       ui.playerNameInput.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          await savePlayerNameToSupabase();
+          try {
+            await savePlayerNameToSupabase();
+          } catch (err) {
+            console.error("Feil ved Enter-lagring:", err);
+          }
         }
       });
 
       ui.playBtn.addEventListener("click", async () => {
-        await AudioFx.unlockAudio();
-        const cleanName = sanitizePlayerName(ui.playerNameInput.value);
-        if (cleanName !== save.playerName) {
-          save.playerName = cleanName;
-          persist();
-          await savePlayerNameToSupabase();
+        try {
+          await AudioFx.unlockAudio();
+
+          const cleanName = sanitizePlayerName(ui.playerNameInput.value);
+          if (cleanName !== save.playerName) {
+            save.playerName = cleanName;
+            persist();
+
+            if (supabase) {
+              await savePlayerNameToSupabase();
+            } else {
+              refreshMenuStats();
+            }
+          }
+
+          resetRun();
+        } catch (err) {
+          console.error("Feil ved start av spill:", err);
+          resetRun();
         }
-        resetRun();
       });
 
       ui.retryBtn.addEventListener("click", async () => {
-        await AudioFx.unlockAudio();
-        resetRun();
+        try {
+          await AudioFx.unlockAudio();
+          resetRun();
+        } catch (err) {
+          console.error("Feil ved restart:", err);
+          resetRun();
+        }
       });
 
       ui.menuBtn.addEventListener("click", () => {
@@ -2694,8 +2728,12 @@
             ui.pauseBtn.textContent = "Fortsett";
           }
         } else {
-          await pingActivePlayer();
-          await loadBoardStats();
+          try {
+            await pingActivePlayer();
+            await loadBoardStats();
+          } catch (e) {
+            console.warn("visibilitychange-feil:", e);
+          }
         }
       });
 
@@ -2711,15 +2749,20 @@
         show(ui.menu);
 
         if (!hasSupabaseConfig) {
-          toast("Legg inn Supabase-nøkler i filen", 1.6);
+          toast("Supabase utilgjengelig, kjører lokalt", 1.6);
           return;
         }
 
-        await ensurePlayerInSupabase();
-        await pingActivePlayer();
-        startPresence();
-        await loadBoardStats();
-        await loadLeaderboard();
+        try {
+          await ensurePlayerInSupabase();
+          await pingActivePlayer();
+          startPresence();
+          await loadBoardStats();
+          await loadLeaderboard();
+        } catch (e) {
+          console.warn("Bootstrap Supabase-feil:", e);
+          toast("Spillet virker, men backend svarte ikke", 1.6);
+        }
       }
 
       bootstrap();
